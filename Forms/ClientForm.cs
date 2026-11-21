@@ -37,9 +37,11 @@ namespace ChatApp.Forms
 
             btnClientConnect.Click += async (s, e) =>
             {
-                if (string.IsNullOrWhiteSpace(txtClientUser.Text))
+                string username = txtClientUser.Text.Trim();
+                if (string.IsNullOrWhiteSpace(username))
                 {
                     MessageBox.Show("Lütfen bir kullanıcı adı giriniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtClientUser.Focus();
                     return;
                 }
 
@@ -50,7 +52,25 @@ namespace ChatApp.Forms
                 }
 
                 btnClientConnect.Enabled = false;
-                await _client.ConnectAsync(txtClientIp.Text.Trim(), port, txtClientUser.Text.Trim());
+                await _client.ConnectAsync(txtClientIp.Text.Trim(), port, username);
+            };
+
+            txtClientUser.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter && btnClientConnect.Enabled)
+                {
+                    e.SuppressKeyPress = true;
+                    btnClientConnect.PerformClick();
+                }
+            };
+
+            txtClientPort.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter && btnClientConnect.Enabled)
+                {
+                    e.SuppressKeyPress = true;
+                    btnClientConnect.PerformClick();
+                }
             };
 
             btnClientDisconnect.Click += async (s, e) =>
@@ -222,6 +242,7 @@ namespace ChatApp.Forms
                 txtClientPort.Enabled = false;
                 txtClientUser.Enabled = false;
                 Text = $"Sohbet İstemcisi - {_client.Username} (Bağlı)";
+                txtMessageInput.Focus();
             }
             else if (status == ConnectionStatus.Connecting)
             {
@@ -257,7 +278,18 @@ namespace ChatApp.Forms
                 return;
             }
 
-            MessageBox.Show(error, "Bağlantı Hatası", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            btnClientConnect.Enabled = true;
+
+            string friendlyMessage = error;
+            if (error.Contains("Hedef makine", StringComparison.OrdinalIgnoreCase) ||
+                error.Contains("reddet", StringComparison.OrdinalIgnoreCase) ||
+                error.Contains("refused", StringComparison.OrdinalIgnoreCase))
+            {
+                friendlyMessage = "Sunucuya bağlanılamadı!\n\n" +
+                    "Ana penceredeki 'Sunucu Yönetimi' sekmesinden sunucunun açık olduğundan emin olunuz.";
+            }
+
+            MessageBox.Show(friendlyMessage, "Bağlantı Bildirimi", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void BtnSaveHistory_Click(object? sender, EventArgs e)
@@ -289,3 +321,4 @@ namespace ChatApp.Forms
         }
     }
 }
+

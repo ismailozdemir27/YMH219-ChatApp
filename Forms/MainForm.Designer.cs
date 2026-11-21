@@ -141,7 +141,7 @@ namespace ChatApp.Forms
             this.tabMain.Controls.Add(this.tabServer);
             this.tabMain.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabMain.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.tabMain.ItemSize = new System.Drawing.Size(160, 32);
+            this.tabMain.ItemSize = new System.Drawing.Size(190, 34);
             this.tabMain.Location = new System.Drawing.Point(0, 0);
             this.tabMain.Name = "tabMain";
             this.tabMain.SelectedIndex = 0;
@@ -710,3 +710,4 @@ namespace ChatApp.Forms
         #endregion
     }
 }
+

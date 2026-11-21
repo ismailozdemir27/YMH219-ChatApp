@@ -31,6 +31,23 @@ namespace ChatApp.Forms
 
             cmbRecipient.Items.Add("📢 Herkes (Genel Oda)");
             cmbRecipient.SelectedIndex = 0;
+
+            // Form yüklendiğinde yerel sunucuyu otomatik olarak başlatalım
+            this.Load += async (s, e) =>
+            {
+                if (!_server.IsRunning && int.TryParse(txtServerPort.Text.Trim(), out int port))
+                {
+                    bool ok = await _server.StartAsync(port);
+                    if (ok)
+                    {
+                        lblServerStatus.Text = $"● Sunucu Aktif (Port: {port})";
+                        lblServerStatus.BackColor = Color.FromArgb(22, 163, 74);
+                        btnServerStart.Enabled = false;
+                        btnServerStop.Enabled = true;
+                        txtServerPort.Enabled = false;
+                    }
+                }
+            };
         }
 
         #region --- SUNUCU YÖNETİMİ (SERVER) ---
@@ -170,9 +187,11 @@ namespace ChatApp.Forms
 
             btnClientConnect.Click += async (s, e) =>
             {
-                if (string.IsNullOrWhiteSpace(txtClientUser.Text))
+                string username = txtClientUser.Text.Trim();
+                if (string.IsNullOrWhiteSpace(username))
                 {
                     MessageBox.Show("Lütfen bir kullanıcı adı giriniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtClientUser.Focus();
                     return;
                 }
 
@@ -182,8 +201,47 @@ namespace ChatApp.Forms
                     return;
                 }
 
+                string ip = txtClientIp.Text.Trim();
+
+                // Yerel sunucuya bağlanılmaya çalışılıyorsa ve sunucu henüz başlatılmamışsa,
+                // kullanıcıyı sekme değiştirmekle uğraştırmadan sunucuyu otomatik başlatalım!
+                if ((ip == "127.0.0.1" || ip.Equals("localhost", StringComparison.OrdinalIgnoreCase)) && !_server.IsRunning)
+                {
+                    if (int.TryParse(txtServerPort.Text.Trim(), out int serverPort))
+                    {
+                        bool ok = await _server.StartAsync(serverPort);
+                        if (ok)
+                        {
+                            lblServerStatus.Text = $"● Sunucu Aktif (Port: {serverPort})";
+                            lblServerStatus.BackColor = Color.FromArgb(22, 163, 74);
+                            btnServerStart.Enabled = false;
+                            btnServerStop.Enabled = true;
+                            txtServerPort.Enabled = false;
+                            await System.Threading.Tasks.Task.Delay(150);
+                        }
+                    }
+                }
+
                 btnClientConnect.Enabled = false;
-                await _client.ConnectAsync(txtClientIp.Text.Trim(), port, txtClientUser.Text.Trim());
+                await _client.ConnectAsync(ip, port, username);
+            };
+
+            txtClientUser.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter && btnClientConnect.Enabled)
+                {
+                    e.SuppressKeyPress = true;
+                    btnClientConnect.PerformClick();
+                }
+            };
+
+            txtClientPort.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter && btnClientConnect.Enabled)
+                {
+                    e.SuppressKeyPress = true;
+                    btnClientConnect.PerformClick();
+                }
             };
 
             btnClientDisconnect.Click += async (s, e) =>
@@ -365,6 +423,7 @@ namespace ChatApp.Forms
                 txtClientIp.Enabled = false;
                 txtClientPort.Enabled = false;
                 txtClientUser.Enabled = false;
+                txtMessageInput.Focus();
             }
             else if (status == ConnectionStatus.Connecting)
             {
@@ -399,7 +458,19 @@ namespace ChatApp.Forms
                 return;
             }
 
-            MessageBox.Show(error, "Bağlantı Hatası", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            btnClientConnect.Enabled = true;
+
+            string friendlyMessage = error;
+            if (error.Contains("Hedef makine", StringComparison.OrdinalIgnoreCase) ||
+                error.Contains("reddet", StringComparison.OrdinalIgnoreCase) ||
+                error.Contains("refused", StringComparison.OrdinalIgnoreCase))
+            {
+                friendlyMessage = "Sunucuya bağlanılamadı!\n\n" +
+                    "Sunucu şu anda kapalı veya belirtilen port dinlenmiyor olabilir.\n" +
+                    "Lütfen 'Sunucu Yönetimi' sekmesinden sunucunun açık olduğundan emin olunuz.";
+            }
+
+            MessageBox.Show(friendlyMessage, "Bağlantı Bildirimi", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void BtnSaveHistory_Click(object? sender, EventArgs e)
@@ -433,3 +504,4 @@ namespace ChatApp.Forms
         #endregion
     }
 }
+
